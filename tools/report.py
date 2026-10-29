@@ -26,7 +26,7 @@ def print_report(report: ZipReport):
         print(f"[{item.severity}] {item.title}: {item.value}")
 
 
-def analyze_features(f: ZipFeatures, audit=None) -> ZipReport:
+def analyze_features(f: ZipFeatures) -> ZipReport:
     findings = []
     score = 0
 
@@ -77,10 +77,7 @@ def analyze_features(f: ZipFeatures, audit=None) -> ZipReport:
         findings.append(Finding("Irregular directory structure", "MEDIUM", f"{f.directory_depth_entropy:.2f}"))
         score += 10
 
-    if audit is not None:
-        if audit.has_path_traversal:
-            findings.append(Finding("Archive traversal evidence", "HIGH", "present in entry names"))
-        if audit.duplicate_name_count:
-            findings.append(Finding("Duplicate archive names", "MEDIUM", str(audit.duplicate_name_count)))
-
+    # NOTE: traversal/duplicate signals come from the ZipFeatures computed over
+    # the audited entries, so an extra audit-derived finding here only printed
+    # the same issue twice. Callers hand in the audit's entries instead.
     return ZipReport(min(score, 100), findings)

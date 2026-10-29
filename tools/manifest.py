@@ -266,14 +266,22 @@ def _safe_pool_string(pool: StringPool, index: int) -> str | None:
 # ============================================================================
 
 def read_manifest(apk_path: Path) -> bytes:
-    """Read the binary AndroidManifest.xml from an APK/ZIP container."""
-    with zipfile.ZipFile(apk_path, "r") as z:
-        try:
-            return z.read("AndroidManifest.xml")
-        except KeyError as exc:
-            raise BinaryXmlError(
-                "APK does not contain the required AndroidManifest.xml entry"
-            ) from exc
+    """Read AndroidManifest.xml through the bounded, zip-bomb-safe reader."""
+    from tools.zip_audit import ZipEntryError, ZipReadLimitError, read_entry_bytes
+
+    try:
+        return read_entry_bytes(
+            apk_path,
+            "AndroidManifest.xml",
+            max_uncompressed=8 * 1024 * 1024,
+            max_ratio=200.0,
+        )
+    except ZipEntryError as exc:
+        raise BinaryXmlError(f"AndroidManifest.xml: {exc}") from exc
+    except ZipReadLimitError as exc:
+        # A manifest larger than 8 MB is not a manifest anymore; either the
+        # APK is hostile or pathologically crafted. Either way it is evidence.
+        raise BinaryXmlError(f"AndroidManifest.xml rejected: {exc}") from exc
 
 
 # ============================================================================

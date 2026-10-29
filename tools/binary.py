@@ -6,10 +6,29 @@ EOCD_SIGNATURE = b"PK\x05\x06"
 ZIP64_EOCD_SIGNATURE = b"PK\x06\x06"
 CENTRAL_DIRECTORY_SIGNATURE = b"PK\x01\x02"
 
+# EOCD record (22 bytes) + its maximum comment (65,535) - the largest tail
+# that can still contain the end-of-central-directory record.
+EOCD_WINDOW = 22 + 0xFFFF
 
-def read_bytes(path: Path) -> bytes:
+
+def read_head(path: Path, size: int = 4) -> bytes:
+    """Read at most *size* bytes from the start of a file (magic probe)."""
     with open(path, "rb") as f:
-        return f.read()
+        return f.read(size)
+
+
+def read_tail(path: Path, max_bytes: int = EOCD_WINDOW) -> tuple[bytes, int]:
+    """Read at most the last *max_bytes* bytes of a file.
+
+    Returns (data, file_offset): add file_offset to any position inside data
+    to get the absolute offset. Never loads the whole archive, so a hostile
+    multi-GB file cannot exhaust memory before a single entry is parsed.
+    """
+    size = path.stat().st_size
+    start = max(0, size - max_bytes)
+    with open(path, "rb") as f:
+        f.seek(start)
+        return f.read(size - start), start
 
 
 def read_eocd(data: bytes):
