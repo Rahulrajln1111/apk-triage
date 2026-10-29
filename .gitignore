@@ -1,0 +1,14 @@
+apks
+
+# Phase 5 disposable outputs
+out/
+
+# ML pipeline outputs: rebuildable, never committed
+data/
+models/
+corpus/
+results/*.json
+
+# Python bytecode
+__pycache__/
+*.pyc
